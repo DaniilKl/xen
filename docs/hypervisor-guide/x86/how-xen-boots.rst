@@ -55,6 +55,11 @@ If ``CONFIG_PVH_GUEST`` was selected at build time, an Elf note is included
 which indicates the ability to use the PVH boot protocol, and registers
 ``__pvh_start`` as the entrypoint, entered in 32bit mode.
 
+A combination of Multiboot 2 and MLE headers is used to implement DRTM for
+legacy (BIOS) boot. The separate entry point is used mainly to differentiate
+from other kinds of boots. It moves a magic number to EAX before jumping into
+common startup code.
+
 
 xen.gz
 ~~~~~~

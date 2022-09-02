@@ -396,4 +396,10 @@ static inline void txt_verify_pmr_ranges(struct txt_os_mle_data *os_mle,
     */
 }
 
+/* Prepares for accesses to TXT-specific memory. */
+void txt_map_mem_regions(void);
+
+/* Marks TXT-specific memory as used to avoid its corruption. */
+void txt_reserve_mem_regions(void);
+
 #endif /* __ASSEMBLY__ */

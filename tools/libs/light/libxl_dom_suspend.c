@@ -209,7 +209,8 @@ static void domain_suspend_common_wait_guest_evtchn(libxl__egc *egc,
         libxl__ev_evtchn *evev);
 static void suspend_common_wait_guest_watch(libxl__egc *egc,
       libxl__ev_xswatch *xsw, const char *watch_path, const char *event_path);
-static void suspend_common_wait_guest_check(libxl__egc *egc,
+/* Returns true if a callback was called, false otherwise */
+static bool suspend_common_wait_guest_check(libxl__egc *egc,
         libxl__domain_suspend_state *dsps);
 static void suspend_common_wait_guest_timeout(libxl__egc *egc,
       libxl__ev_time *ev, const struct timeval *requested_abs, int rc);
@@ -408,7 +409,7 @@ static void suspend_common_wait_guest_watch(libxl__egc *egc,
     suspend_common_wait_guest_check(egc, dsps);
 }
 
-static void suspend_common_wait_guest_check(libxl__egc *egc,
+static bool suspend_common_wait_guest_check(libxl__egc *egc,
         libxl__domain_suspend_state *dsps)
 {
     STATE_AO_GC(dsps->ao);
@@ -427,7 +428,7 @@ static void suspend_common_wait_guest_check(libxl__egc *egc,
 
     if (!(info.flags & XEN_DOMINF_shutdown))
         /* keep waiting */
-        return;
+        return false;
 
     shutdown_reason = (info.flags >> XEN_DOMINF_shutdownshift)
         & XEN_DOMINF_shutdownmask;
@@ -438,11 +439,15 @@ static void suspend_common_wait_guest_check(libxl__egc *egc,
     }
 
     LOGD(DEBUG, domid, "guest has suspended");
+    dsps->guest_responded = 1;
+    libxl__xswait_stop(gc, &dsps->pvcontrol);
     domain_suspend_common_guest_suspended(egc, dsps);
-    return;
+    return true;
 
  err:
+    libxl__xswait_stop(gc, &dsps->pvcontrol);
     domain_suspend_common_done(egc, dsps, ERROR_FAIL);
+    return true;
 }
 
 static void suspend_common_wait_guest_timeout(libxl__egc *egc,
@@ -450,6 +455,8 @@ static void suspend_common_wait_guest_timeout(libxl__egc *egc,
 {
     libxl__domain_suspend_state *dsps = CONTAINER_OF(ev, *dsps, guest_timeout);
     STATE_AO_GC(dsps->ao);
+    if (suspend_common_wait_guest_check(egc, dsps))
+        return;
     if (rc == ERROR_TIMEDOUT) {
         LOGD(ERROR, dsps->domid, "guest did not suspend, timed out");
         rc = ERROR_GUEST_TIMEDOUT;

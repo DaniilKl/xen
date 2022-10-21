@@ -6,6 +6,7 @@ obj32 := cmdline.32.o
 obj32 += reloc.32.o
 obj32 += reloc-trampoline.32.o
 obj32 += txt_early.32.o
+obj32 += tpm_early.32.o
 
 obj64 := reloc-trampoline.o
 
@@ -26,6 +27,10 @@ $(obj32): CFLAGS_stack_boundary :=
 $(obj32): XEN_CFLAGS := $(CFLAGS_x86_32) -fpic
 
 $(obj)/%.32.o: $(src)/%.c FORCE
+	$(call if_changed_rule,cc_o_c)
+
+$(obj)/tpm_early.32.o: XEN_CFLAGS += -D__EARLY_TPM__
+$(obj)/tpm_early.32.o: $(src)/../tpm.c FORCE
 	$(call if_changed_rule,cc_o_c)
 
 orphan-handling-$(call ld-option,--orphan-handling=error) := --orphan-handling=error
@@ -81,7 +86,7 @@ cmd_combine = \
               --bin1      $(obj)/built-in-32.base.bin \
               --bin2      $(obj)/built-in-32.offset.bin \
               --map       $(obj)/built-in-32.base.map \
-              --exports   cmdline_parse_early,reloc,reloc_trampoline32,txt_early_tests \
+              --exports   cmdline_parse_early,reloc,reloc_trampoline32,txt_early_tests,tpm_extend_mbi \
               --output    $@
 
 targets += built-in-32.S

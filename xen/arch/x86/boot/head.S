@@ -527,6 +527,9 @@ __start:
         /* Store MBI address in EBX where MB2 code expects it. */
         mov     %eax, %ebx
 
+        /* tpm_extend_mbi(mbi/eax, slrt/edx) using fastcall. */
+        call    tpm_extend_mbi
+
         /* Move magic number expected by Multiboot 2 to EAX and fall through. */
         movl    $MULTIBOOT2_BOOTLOADER_MAGIC, %eax
 

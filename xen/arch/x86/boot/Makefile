@@ -6,6 +6,7 @@ obj32 := cmdline.32.o
 obj32 += reloc.32.o
 obj32 += reloc-trampoline.32.o
 obj32 += slaunch-early.32.o
+obj32 += tpm-early.32.o
 
 obj64 := reloc-trampoline.o
 
@@ -30,6 +31,10 @@ $(obj)/%.32.o: $(src)/%.c FORCE
 	$(call if_changed_rule,cc_o_c)
 
 $(obj)/slaunch-early.32.o: XEN_CFLAGS += -D__EARLY_SLAUNCH__
+
+$(obj)/tpm-early.32.o: XEN_CFLAGS += -D__EARLY_SLAUNCH__
+$(obj)/tpm-early.32.o: $(src)/../tpm.c FORCE
+	$(call if_changed_rule,cc_o_c)
 
 orphan-handling-$(call ld-option,--orphan-handling=error) := --orphan-handling=error
 LDFLAGS_DIRECT-$(call ld-option,--warn-rwx-segments) := --no-warn-rwx-segments
@@ -84,7 +89,7 @@ cmd_combine = \
               --bin1      $(obj)/built-in-32.base.bin \
               --bin2      $(obj)/built-in-32.offset.bin \
               --map       $(obj)/built-in-32.base.map \
-              --exports   cmdline_parse_early,reloc,reloc_trampoline32,slaunch_early_init \
+              --exports   cmdline_parse_early,reloc,reloc_trampoline32,slaunch_early_init,tpm_extend_mbi \
               --output    $@
 
 targets += built-in-32.S

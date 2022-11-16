@@ -15,7 +15,35 @@ ENTRY(__high_start)
         mov     $XEN_MINIMAL_CR4,%rcx
         mov     %rcx,%cr4
 
-        mov     stack_start(%rip),%rsp
+        test    %ebx, %ebx
+        cmovz   stack_start(%rip), %rsp
+        jz      .L_stack_set
+
+        /* APs only: get stack base from APIC ID saved in %esp. */
+        mov     $0, %rbx
+        lea     cpu_data(%rip), %rcx
+        /* cpu_data[0] is BSP, skip it. */
+1:
+        add     $1, %rbx
+        add     $CPUINFO_X86_sizeof, %rcx
+        cmp     $NR_CPUS, %rbx
+        jae     2f
+        cmp     %esp, CPUINFO_X86_apicid(%rcx)
+        jne     1b
+
+        /* %rbx is now Xen CPU index. */
+        lea     stack_base(%rip), %rcx
+        mov     (%rcx, %rbx, 8), %rsp
+
+        test    %rsp, %rsp
+        jz      2f
+        add     $(STACK_SIZE - CPUINFO_sizeof), %rsp
+        jmp     .L_stack_set
+2:
+        hlt
+        jmp     2b
+
+.L_stack_set:
 
         /* Reset EFLAGS (subsumes CLI and CLD). */
         pushq   $0

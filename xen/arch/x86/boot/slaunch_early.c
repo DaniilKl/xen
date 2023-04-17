@@ -22,10 +22,13 @@ void slaunch_early_init(uint32_t load_base_addr,
     void *txt_heap;
     struct txt_os_mle_data *os_mle;
     struct slr_table *slrt;
+    struct txt_os_sinit_data *os_sinit;
     struct slr_entry_intel_info *intel_info;
+    uint32_t size = tgt_end_addr - tgt_base_addr;
 
     txt_heap = txt_init();
     os_mle = txt_os_mle_data_start(txt_heap);
+    os_sinit = txt_os_sinit_data_start(txt_heap);
 
     result->slrt_pa = os_mle->slrt;
     result->mbi_pa = 0;
@@ -38,4 +41,7 @@ void slaunch_early_init(uint32_t load_base_addr,
         return;
 
     result->mbi_pa = intel_info->boot_params_base;
+
+    txt_verify_pmr_ranges(os_mle, os_sinit, intel_info,
+                          load_base_addr, tgt_base_addr, size);
 }

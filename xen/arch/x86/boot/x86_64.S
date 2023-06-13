@@ -31,7 +31,10 @@ ENTRY(__high_start)
         cmp     %esp, CPUINFO_X86_apicid(%rcx)
         jne     1b
 
-        /* %rbx is now Xen CPU index. */
+        /*
+         * %rbx (callee-save, as it will be passed to start_secondary() later)
+         * is now Xen CPU index. Use it to read stack base.
+         */
         lea     stack_base(%rip), %rcx
         mov     (%rcx, %rbx, 8), %rsp
 
@@ -102,6 +105,7 @@ ENTRY(__high_start)
 .L_ap_cet_done:
 #endif /* CONFIG_XEN_SHSTK || CONFIG_XEN_IBT */
 
+        mov     %rbx, %rdi
         tailcall start_secondary
 
 .L_bsp:

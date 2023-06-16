@@ -2069,6 +2069,8 @@ void asmlinkage __init noreturn __start_xen(void)
                 stack_base[i] = cpu_alloc_stack(i);
         }
 
+        smp_send_init_sipi_sipi_allbutself();
+
         for_each_present_cpu ( i )
         {
             if ( (park_offline_cpus || num_online_cpus() < max_cpus) &&

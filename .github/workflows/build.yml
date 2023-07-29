@@ -1,0 +1,15 @@
+name: Test build and package QubesOS RPMs
+
+on:
+  push:
+    branches:
+      - 'aem*'
+    tags:
+      - '*'
+
+jobs:
+  qubes-dom0-package:
+    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
+    with:
+      qubes-component: 'vmm-xen'
+      qubes-pkg-src-dir: '.'

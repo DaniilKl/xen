@@ -19,6 +19,7 @@
 #include <xen/sha256.h>
 #include <xen/types.h>
 #include <asm/intel_txt.h>
+#include <asm/slaunch.h>
 #include <asm/tpm.h>
 
 #ifdef __EARLY_TPM__
@@ -966,6 +967,6 @@ void tpm_extend_mbi(uint32_t *mbi)
 {
     /* MBI starts with uint32_t total_size. */
     tpm_hash_extend(DRTM_LOC, DRTM_DATA_PCR, (uint8_t *)mbi, *mbi,
-                    TXT_EVTYPE_SLAUNCH, NULL, 0);
+                    DLE_EVTYPE_SLAUNCH, NULL, 0);
 }
 #endif

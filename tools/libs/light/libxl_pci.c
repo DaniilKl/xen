@@ -1243,6 +1243,8 @@ static void pci_add_qmp_device_add(libxl__egc *egc, pci_add_state *pas)
      */
     if (pci->permissive)
         libxl__qmp_param_add_bool(gc, &args, "permissive", true);
+    if (pci->power_mgmt)
+        libxl__qmp_param_add_bool(gc, &args, "power_mgmt", true);
 
     qmp->ao = pas->aodev->ao;
     qmp->domid = domid;

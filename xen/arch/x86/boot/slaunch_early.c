@@ -19,6 +19,12 @@
 #include <xen/types.h>
 #include <asm/intel_txt.h>
 
+struct early_tests_results
+{
+    uint32_t mbi_pa;
+    uint32_t slrt_pa;
+} __packed;
+
 static void verify_pmr_ranges(struct txt_os_mle_data *os_mle,
                               struct txt_os_sinit_data *os_sinit,
                               uint32_t load_base_addr, uint32_t tgt_base_addr,
@@ -95,9 +101,10 @@ static void verify_pmr_ranges(struct txt_os_mle_data *os_mle,
     */
 }
 
-uint32_t txt_early_tests(uint32_t load_base_addr,
+void slaunch_early_tests(uint32_t load_base_addr,
                          uint32_t tgt_base_addr,
-                         uint32_t tgt_end_addr)
+                         uint32_t tgt_end_addr,
+                         struct early_tests_results *result)
 {
     void *txt_heap;
     struct txt_os_mle_data *os_mle;
@@ -118,5 +125,6 @@ uint32_t txt_early_tests(uint32_t load_base_addr,
 
     verify_pmr_ranges(os_mle, os_sinit, load_base_addr, tgt_base_addr, size);
 
-    return os_mle->boot_params_addr;
+    result->mbi_pa = os_mle->boot_params_addr;
+    result->slrt_pa = os_mle->slrt;
 }

@@ -5,7 +5,7 @@ obj-bin-y += $(obj64)
 obj32 := cmdline.32.o
 obj32 += reloc.32.o
 obj32 += reloc-trampoline.32.o
-obj32 += txt_early.32.o
+obj32 += slaunch_early.32.o
 obj32 += tpm_early.32.o
 
 obj64 := reloc-trampoline.o
@@ -86,7 +86,7 @@ cmd_combine = \
               --bin1      $(obj)/built-in-32.base.bin \
               --bin2      $(obj)/built-in-32.offset.bin \
               --map       $(obj)/built-in-32.base.map \
-              --exports   cmdline_parse_early,reloc,reloc_trampoline32,txt_early_tests,tpm_extend_mbi \
+              --exports   cmdline_parse_early,reloc,reloc_trampoline32,slaunch_early_tests,tpm_extend_mbi \
               --output    $@
 
 targets += built-in-32.S

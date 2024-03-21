@@ -62,7 +62,6 @@
 #include <asm/prot-key.h>
 #include <asm/pv/domain.h>
 #include <asm/trampoline.h>
-#include <asm/intel_txt.h>
 #include <asm/slaunch.h>
 #include <asm/tpm.h>
 
@@ -1388,13 +1387,15 @@ void asmlinkage __init noreturn __start_xen(void)
 
     if ( slaunch_active )
     {
-        /* Prepare for TXT-related code. */
-        map_txt_mem_regions();
+        /* Prepare for accesses to essential data structures setup by boot
+         * environment. */
+        map_slaunch_mem_regions();
+
         /* Measure SLRT here because it gets used by init_e820(), the rest is
          * measured below by tpm_process_drtm_policy(). */
         tpm_measure_slrt();
-        /* Reserve TXT heap and SINIT. */
-        protect_txt_mem_regions();
+
+        protect_slaunch_mem_regions();
     }
 
     /* Sanitise the raw E820 map to produce a final clean version. */

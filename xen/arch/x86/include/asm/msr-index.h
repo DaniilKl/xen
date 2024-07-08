@@ -703,4 +703,13 @@
 #define MSR_PKGC9_IRTL			0x00000634
 #define MSR_PKGC10_IRTL			0x00000635
 
+/* Package C-state residency counters */
+#define MSR_PKG_C2_RESIDENCY            0x0000060d
+#define MSR_PKG_C3_RESIDENCY            0x000003f8
+#define MSR_PKG_C6_RESIDENCY            0x000003f9
+#define MSR_PKG_C7_RESIDENCY            0x000003fa
+#define MSR_PKG_C8_RESIDENCY            0x00000630
+#define MSR_PKG_C9_RESIDENCY            0x00000631
+#define MSR_PKG_C10_RESIDENCY           0x00000632
+
 #endif /* __ASM_MSR_INDEX_H */

@@ -182,6 +182,12 @@ static void cf_check do_get_hw_residencies(void *arg)
 
     switch ( c->x86_model )
     {
+    /* Tiger Lake */
+    case 0x8C:
+    case 0x8D:
+    /* Alder Lake */
+    case 0x97:
+    case 0x9A:
     /* 4th generation Intel Core (Haswell) */
     case 0x45:
         GET_PC8_RES(hw_res->pc8);
@@ -212,9 +218,6 @@ static void cf_check do_get_hw_residencies(void *arg)
     case 0x6C:
     case 0x7D:
     case 0x7E:
-    /* Tiger Lake */
-    case 0x8C:
-    case 0x8D:
     /* Kaby Lake */
     case 0x8E:
     case 0x9E:

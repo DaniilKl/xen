@@ -582,8 +582,6 @@ static int do_boot_cpu(int apicid, int cpu)
         printk("Booting processor %d/%d eip %lx\n",
                cpu, apicid, start_eip);
 
-    stack_start = stack_base[cpu] + STACK_SIZE - sizeof(struct cpu_info);
-
     /* This grunge runs the startup process for the targeted processor. */
 
     set_cpu_state(CPU_STATE_INIT);

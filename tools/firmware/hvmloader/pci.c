@@ -173,6 +173,7 @@ void pci_setup(void)
         switch ( class )
         {
         case 0x0300:
+        case 0x0380:
             /* If emulated VGA is found, preserve it as primary VGA. */
             if ( (vendor_id == 0x1234) && (device_id == 0x1111) )
             {

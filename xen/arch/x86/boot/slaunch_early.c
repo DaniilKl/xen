@@ -31,6 +31,19 @@ asm (
 #include "../include/asm/slaunch.h"
 #include "../include/asm/x86-vendors.h"
 
+/*
+ * The AMD-defined structure layout for the SLB. The last two fields are
+ * SL-specific.
+ */
+struct skinit_sl_header
+{
+    uint16_t skl_entry_point;
+    uint16_t length;
+    uint8_t reserved[62];
+    uint16_t skl_info_offset;
+    uint16_t bootloader_data_offset;
+} __packed;
+
 struct early_tests_results
 {
     uint32_t mbi_pa;
@@ -125,7 +138,6 @@ static void verify_pmr_ranges(struct txt_os_mle_data *os_mle,
 void __stdcall slaunch_early_tests(uint32_t load_base_addr,
                                    uint32_t tgt_base_addr,
                                    uint32_t tgt_end_addr,
-                                   uint32_t multiboot_param,
                                    uint32_t slaunch_param,
                                    struct early_tests_results *result)
 {
@@ -138,16 +150,28 @@ void __stdcall slaunch_early_tests(uint32_t load_base_addr,
     {
         /*
          * Not an Intel CPU. Currently the only other option is AMD with SKINIT
-         * and secure-kernel-loader.
+         * and secure-kernel-loader (SKL).
          */
+        struct slr_table *slrt;
+        struct slr_entry_amd_info *amd_info;
+        const struct skinit_sl_header *sl_header = (void *)slaunch_param;
 
-        const uint16_t *sl_header = (void *)slaunch_param;
-        /* secure-kernel-loader passes MBI as a parameter for Multiboot
-         * kernel. */
-        result->mbi_pa = multiboot_param;
-        /* The forth 16-bit integer of SKL's header is an offset to
-         * bootloader's data, which is SLRT. */
-        result->slrt_pa = slaunch_param + sl_header[3];
+        /*
+         * slaunch_param holds a physical address of SLB.
+         * Bootloader's data is SLRT.
+         */
+        result->slrt_pa = slaunch_param + sl_header->bootloader_data_offset;
+        result->mbi_pa = 0;
+
+        slrt = (struct slr_table *)result->slrt_pa;
+
+        amd_info = (struct slr_entry_amd_info *)
+                   slr_next_entry_by_tag (slrt, NULL, SLR_ENTRY_AMD_INFO);
+        /* Basic checks only, SKL checked and consumed the rest. */
+        if ( amd_info == NULL || amd_info->hdr.size != sizeof(*amd_info) )
+            return;
+
+        result->mbi_pa = amd_info->boot_params_base;
         return;
     }
 

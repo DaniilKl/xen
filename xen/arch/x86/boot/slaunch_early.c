@@ -21,6 +21,19 @@
 #include <xen/slr_table.h>
 #include <asm/x86-vendors.h>
 
+/*
+ * The AMD-defined structure layout for the SLB. The last two fields are
+ * SL-specific.
+ */
+struct skinit_sl_header
+{
+    uint16_t skl_entry_point;
+    uint16_t length;
+    uint8_t reserved[62];
+    uint16_t skl_info_offset;
+    uint16_t bootloader_data_offset;
+} __packed;
+
 struct early_tests_results
 {
     uint32_t mbi_pa;
@@ -133,29 +146,28 @@ void slaunch_early_tests(uint32_t load_base_addr,
     {
         /*
          * Not an Intel CPU. Currently the only other option is AMD with SKINIT
-         * and secure-kernel-loader.
+         * and secure-kernel-loader (SKL).
          */
         struct slr_table *slrt;
-        struct slr_entry_dl_info *dl_info;
+        struct slr_entry_amd_info *amd_info;
+        const struct skinit_sl_header *sl_header = (void *)slaunch_param;
 
-        const uint16_t *sl_header = (void *)slaunch_param;
         /*
-         * The fourth 16-bit integer of SKL's header is an offset to
-         * bootloader's data, which is SLRT.
+         * slaunch_param holds a physical address of SLB.
+         * Bootloader's data is SLRT.
          */
-        result->slrt_pa = slaunch_param + sl_header[3];
+        result->slrt_pa = slaunch_param + sl_header->bootloader_data_offset;
+        result->mbi_pa = 0;
+
         slrt = (struct slr_table *)result->slrt_pa;
 
-        result->mbi_pa = 0;
-        dl_info = (struct slr_entry_dl_info *)
-                  slr_next_entry_by_tag (slrt, NULL, SLR_ENTRY_DL_INFO);
+        amd_info = (struct slr_entry_amd_info *)
+                   slr_next_entry_by_tag (slrt, NULL, SLR_ENTRY_AMD_INFO);
         /* Basic checks only, SKL checked and consumed the rest. */
-        if ( dl_info                             == NULL
-             || dl_info->hdr.size                != sizeof(*dl_info)
-             || dl_info->bl_context.bootloader   != SLR_BOOTLOADER_GRUB )
+        if ( amd_info == NULL || amd_info->hdr.size != sizeof(*amd_info) )
             return;
 
-        result->mbi_pa = dl_info->bl_context.context;
+        result->mbi_pa = amd_info->boot_params_base;
         return;
     }
 

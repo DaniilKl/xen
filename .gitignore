@@ -270,6 +270,7 @@ xen/arch/x86/boot/*.bin
 xen/arch/x86/boot/*.lnk
 xen/arch/x86/efi.lds
 xen/arch/x86/efi/check.efi
+xen/arch/x86/efi/fixmlehdr
 xen/arch/x86/efi/mkreloc
 xen/arch/x86/include/asm/asm-macros.h
 xen/arch/*/xen.lds

@@ -229,14 +229,22 @@ GLOBAL(__page_tables_end)
         .section .init.data, "aw", @progbits
         .align PAGE_SIZE, 0
 
-l1_bootmap:
+bootmap_start:
+
+l1_bootmap: /* 1x L1 page, mapping 2M of RAM. */
         .fill L1_PAGETABLE_ENTRIES, 8, 0
         .size l1_bootmap, . - l1_bootmap
 
-GLOBAL(l2_bootmap)
+GLOBAL(l2_bootmap) /* 4x L2 pages, each mapping 1G of RAM. */
         .fill 4 * L2_PAGETABLE_ENTRIES, 8, 0
         .size l2_bootmap, . - l2_bootmap
 
-GLOBAL(l3_bootmap)
+GLOBAL(l3_bootmap) /* 1x L3 page, mapping the 4x L2 pages. */
         .fill L3_PAGETABLE_ENTRIES, 8, 0
         .size l3_bootmap, . - l3_bootmap
+
+l4_bootmap: /* 1x L4 page, mapping the L3 page. */
+        .fill L4_PAGETABLE_ENTRIES, 8, 0
+        .size l4_bootmap, . - l4_bootmap
+
+bootmap_end:

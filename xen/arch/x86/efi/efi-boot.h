@@ -9,8 +9,11 @@
 #include <asm/microcode.h>
 #include <asm/msr.h>
 #include <asm/setup.h>
+#include <asm/intel_txt.h>
+#include <asm/slaunch.h>
 
 static struct file __initdata ucode;
+static uint64_t __initdata image_size;
 static multiboot_info_t __initdata mbi = {
     .flags = MBI_MODULES | MBI_LOADERNAME
 };
@@ -19,6 +22,9 @@ static multiboot_info_t __initdata mbi = {
  * support - see __start_xen().
  */
 static module_t __initdata mb_modules[5];
+
+/* Indicates to head.S that it should jump back to start_xen_from_efi(). */
+bool __initdata slaunch_efi_boot;
 
 static void __init edd_put_string(u8 *dst, size_t n, const char *src)
 {
@@ -234,9 +240,28 @@ static void __init efi_arch_pre_exit_boot(void)
     }
 }
 
-static void __init noreturn efi_arch_post_exit_boot(void)
+void __init noreturn start_xen_from_efi(void)
 {
     u64 cr4 = XEN_MINIMAL_CR4 & ~X86_CR4_PGE, efer;
+
+    if ( slaunch_active )
+    {
+        struct slr_table *slrt = (struct slr_table *)efi.slr;
+        struct slr_entry_intel_info *intel_info;
+
+        intel_info = (struct slr_entry_intel_info *)
+            slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_INTEL_INFO);
+        if ( intel_info != NULL )
+        {
+            void *txt_heap = txt_init();
+            struct txt_os_mle_data *os_mle = txt_os_mle_data_start(txt_heap);
+            struct txt_os_sinit_data *os_sinit =
+                txt_os_sinit_data_start(txt_heap);
+
+            txt_verify_pmr_ranges(os_mle, os_sinit, xen_phys_start,
+                                  __XEN_VIRT_START, image_size);
+        }
+    }
 
     efi_arch_relocate_image(__XEN_VIRT_START - xen_phys_start);
     memcpy((void *)trampoline_phys, trampoline_start, cfg.size);
@@ -276,6 +301,41 @@ static void __init noreturn efi_arch_post_exit_boot(void)
                      "D" (&mbi)
                    : "memory" );
     unreachable();
+}
+
+static void __init attempt_secure_launch(void)
+{
+    struct slr_table *slrt;
+    struct slr_entry_dl_info *dlinfo;
+    dl_handler_func handler_callback;
+
+    /* The presence of this table indicates a Secure Launch boot. */
+    slrt = (struct slr_table *)efi.slr;
+    if ( efi.slr == EFI_INVALID_TABLE_ADDR || slrt->magic != SLR_TABLE_MAGIC ||
+         slrt->revision != SLR_TABLE_REVISION )
+        return;
+
+    slaunch_active = true;
+    slaunch_slrt = efi.slr;
+    slaunch_efi_boot = true;
+
+    /* Jump through DL stub to initiate Secure Launch */
+    dlinfo = (struct slr_entry_dl_info *)
+        slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_DL_INFO);
+
+    handler_callback = (dl_handler_func)dlinfo->dl_handler;
+    handler_callback(&dlinfo->bl_context);
+
+    unreachable();
+}
+
+static void __init noreturn efi_arch_post_exit_boot(void)
+{
+    /* If Secure Launch happens, this doesn't return.  Otherwise,
+     * start_xen_from_efi() is invoked after DRTM has been initiated. */
+    attempt_secure_launch();
+
+    start_xen_from_efi();
 }
 
 static void __init efi_arch_cfg_file_early(const EFI_LOADED_IMAGE *image,
@@ -774,6 +834,7 @@ static void __init efi_arch_halt(void)
 static void __init efi_arch_load_addr_check(const EFI_LOADED_IMAGE *loaded_image)
 {
     xen_phys_start = (UINTN)loaded_image->ImageBase;
+    image_size = loaded_image->ImageSize;
     if ( (xen_phys_start + loaded_image->ImageSize - 1) >> 32 )
         blexit(L"Xen must be loaded below 4Gb.");
     if ( xen_phys_start & ((1 << L2_PAGETABLE_SHIFT) - 1) )

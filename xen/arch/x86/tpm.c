@@ -317,7 +317,7 @@ union cmd_rsp {
     uint8_t buf[CMD_RSP_BUF_SIZE];
 };
 
-static void tpm12_hash_extend(unsigned loc, uint8_t *buf, unsigned size,
+static void tpm12_hash_extend(unsigned loc, const uint8_t *buf, unsigned size,
                               unsigned pcr, uint8_t *out_digest)
 {
     union cmd_rsp cmd_rsp;
@@ -391,7 +391,7 @@ union cmd_rsp {
     struct extend_rsp extend_r;
 };
 
-static void tpm12_hash_extend(unsigned loc, uint8_t *buf, unsigned size,
+static void tpm12_hash_extend(unsigned loc, const uint8_t *buf, unsigned size,
                               unsigned pcr, uint8_t *out_digest)
 {
     union cmd_rsp cmd_rsp;
@@ -419,7 +419,7 @@ static void tpm12_hash_extend(unsigned loc, uint8_t *buf, unsigned size,
 
 static void *create_log_event12(struct txt_ev_log_container_12 *evt_log,
                                 uint32_t evt_log_size, uint32_t pcr,
-                                uint32_t type, uint8_t *data,
+                                uint32_t type, const uint8_t *data,
                                 unsigned data_size)
 {
     struct TPM12_PCREvent *new_entry;
@@ -980,8 +980,9 @@ create_log_event20(struct tpm2_spec_id_event *evt_log, uint32_t evt_log_size,
 
 /************************** end of TPM2.0 specific ****************************/
 
-void tpm_hash_extend(unsigned loc, unsigned pcr, uint8_t *buf, unsigned size,
-                     uint32_t type, uint8_t *log_data, unsigned log_data_size)
+void tpm_hash_extend(unsigned loc, unsigned pcr, const uint8_t *buf,
+                     unsigned size, uint32_t type, const uint8_t *log_data,
+                     unsigned log_data_size)
 {
     void *evt_log_addr;
     uint32_t evt_log_size;

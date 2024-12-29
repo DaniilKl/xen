@@ -7,8 +7,9 @@
 #define TPM_TIS_BASE  0xFED40000
 #define TPM_TIS_SIZE  0x00010000
 
-void tpm_hash_extend(unsigned loc, unsigned pcr, uint8_t *buf, unsigned size,
-                     uint32_t type, uint8_t *log_data, unsigned log_data_size);
+void tpm_hash_extend(unsigned loc, unsigned pcr, const uint8_t *buf,
+                     unsigned size, uint32_t type, const uint8_t *log_data,
+                     unsigned log_data_size);
 
 /* Measures essential parts of SLR table before making use of them. */
 void tpm_measure_slrt(void);

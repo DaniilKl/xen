@@ -637,8 +637,8 @@ union tpm2_cmd_rsp {
     struct tpm2_sequence_complete_rsp finish_r;
 };
 
-static uint32_t tpm2_hash_extend(unsigned loc, uint8_t *buf, unsigned size,
-                                 unsigned pcr,
+static uint32_t tpm2_hash_extend(unsigned loc, const uint8_t *buf,
+                                 unsigned size, unsigned pcr,
                                  struct tpm2_log_hashes *log_hashes)
 {
     uint32_t seq_handle;
@@ -825,8 +825,8 @@ static bool tpm_supports_hash(unsigned loc, const struct tpm2_log_hash *hash)
     return rc == 0;
 }
 
-static uint32_t tpm2_hash_extend(unsigned loc, uint8_t *buf, unsigned size,
-                                 unsigned pcr,
+static uint32_t tpm2_hash_extend(unsigned loc, const uint8_t *buf,
+                                 unsigned size, unsigned pcr,
                                  const struct tpm2_log_hashes *log_hashes)
 {
     uint32_t rc;
@@ -911,7 +911,7 @@ find_evt_log_ext_data(struct tpm2_spec_id_event *evt_log)
 
 static struct tpm2_log_hashes
 create_log_event20(struct tpm2_spec_id_event *evt_log, uint32_t evt_log_size,
-                   uint32_t pcr, uint32_t type, uint8_t *data,
+                   uint32_t pcr, uint32_t type, const uint8_t *data,
                    unsigned data_size)
 {
     struct tpm2_log_hashes log_hashes = {0};

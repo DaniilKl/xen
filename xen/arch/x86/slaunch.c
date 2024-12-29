@@ -341,8 +341,8 @@ void tpm_process_drtm_policy(const multiboot_info_t *mbi)
         }
 
         if ( policy_entry[i].flags & SLR_POLICY_IMPLICIT_SIZE )
-            panic("Unexpected implicitly-sized DRTM entry of Secure Launch at %d\n",
-                  i);
+            panic("Unexpected implicitly-sized DRTM entry of Secure Launch at %d (type %d)\n",
+                  i, policy_entry[i].entity_type);
 
         map_l2(start, size);
         tpm_hash_extend(DRTM_LOC, policy_entry[i].pcr, __va(start), size,

@@ -140,17 +140,24 @@ void tpm_measure_slrt(void)
 
     if ( slrt->revision == 1 )
     {
+        /* In revision one of the SLRT, only platform-specific info table is
+         * measured. */
         if ( boot_cpu_data.x86_vendor == X86_VENDOR_INTEL )
         {
-            /* In revision one of the SLRT, only Intel info table is
-             * measured. */
-            struct slr_entry_intel_info *intel_info =
-                (void *)slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_INTEL_INFO);
-            if ( intel_info == NULL )
+            struct slr_entry_intel_info tmp;
+            struct slr_entry_intel_info *entry;
+
+            entry = (struct slr_entry_intel_info *)
+                slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_INTEL_INFO);
+            if ( entry == NULL )
                 panic("SLRT is missing Intel-specific information!\n");
 
-            tpm_hash_extend(DRTM_LOC, DRTM_DATA_PCR, (uint8_t *)intel_info,
-                            sizeof(*intel_info), DLE_EVTYPE_SLAUNCH, NULL, 0);
+            tmp = *entry;
+            tmp.boot_params_base = 0;
+            tmp.txt_heap = 0;
+
+            tpm_hash_extend(DRTM_LOC, DRTM_DATA_PCR, (uint8_t *)&tmp,
+                            sizeof(tmp), DLE_EVTYPE_SLAUNCH, NULL, 0);
         }
     }
     else

@@ -205,10 +205,26 @@ static struct slr_entry_policy *slr_get_policy(struct slr_table *slrt)
     return policy;
 }
 
-static void check_drtm_policy(struct slr_table *slrt,
-                              struct slr_entry_policy *policy,
-                              struct slr_policy_entry *policy_entry,
-                              const multiboot_info_t *mbi)
+static void check_slrt_policy_entry(struct slr_policy_entry *policy_entry,
+                                    int idx,
+                                    struct slr_table *slrt)
+{
+    if ( policy_entry->entity_type != SLR_ET_SLRT )
+        panic("Expected DRTM policy entry #%d to describe SLRT, got %#04x!\n",
+              idx, policy_entry->entity_type);
+    if ( policy_entry->pcr != DRTM_DATA_PCR )
+        panic("SLRT was measured to PCR-%d instead of PCR-%d!\n", DRTM_DATA_PCR,
+              policy_entry->pcr);
+    if ( policy_entry->entity != (uint64_t)__pa(slrt) )
+        panic("SLRT address (%#08lx) differs from its DRTM entry (%#08lx)\n",
+              __pa(slrt), policy_entry->entity);
+}
+
+/* Returns number of policy entries that were already measured. */
+static unsigned int check_drtm_policy(struct slr_table *slrt,
+                                      struct slr_entry_policy *policy,
+                                      struct slr_policy_entry *policy_entry,
+                                      const multiboot_info_t *mbi)
 {
     uint32_t i;
     module_t *mods;
@@ -228,15 +244,7 @@ static void check_drtm_policy(struct slr_table *slrt,
               policy_entry[0].pcr);
 
     /* SLRT policy entry must be the second one. */
-    if ( policy_entry[1].entity_type != SLR_ET_SLRT )
-        panic("Second entry of DRTM policy in SLRT is not SLRT: %#04x!\n",
-              policy_entry[1].entity_type);
-    if ( policy_entry[1].pcr != DRTM_DATA_PCR )
-        panic("SLRT was measured to %d instead of %d PCR!\n", DRTM_DATA_PCR,
-              policy_entry[1].pcr);
-    if ( policy_entry[1].entity != (uint64_t)__pa(slrt) )
-        panic("SLRT address (%#08lx) differes from its DRTM entry (%#08lx)\n",
-              __pa(slrt), policy_entry[1].entity);
+    check_slrt_policy_entry(&policy_entry[1], 1, slrt);
 
     mods = __va(mbi->mods_addr);
     for ( i = 0; i < mbi->mods_count; i++ )
@@ -274,6 +282,12 @@ static void check_drtm_policy(struct slr_table *slrt,
         panic("Unexpected number of Multiboot modules: %d instead of %d\n",
               (int)mbi->mods_count, (int)num_mod_entries);
     }
+
+    /*
+     * MBI was measured in tpm_extend_mbi().
+     * SLRT was measured in tpm_measure_slrt().
+     */
+    return 2;
 }
 
 void tpm_process_drtm_policy(const multiboot_info_t *mbi)
@@ -282,6 +296,7 @@ void tpm_process_drtm_policy(const multiboot_info_t *mbi)
     struct slr_entry_policy *policy;
     struct slr_policy_entry *policy_entry;
     uint16_t i;
+    unsigned int measured;
 
     slrt = slr_get_table();
 
@@ -289,13 +304,11 @@ void tpm_process_drtm_policy(const multiboot_info_t *mbi)
     policy_entry = (struct slr_policy_entry *)
         ((uint8_t *)policy + sizeof(*policy));
 
-    check_drtm_policy(slrt, policy, policy_entry, mbi);
-    /* MBI was measured in tpm_extend_mbi(). */
-    policy_entry[0].flags |= SLR_POLICY_FLAG_MEASURED;
-    /* SLRT was measured in tpm_measure_slrt(). */
-    policy_entry[1].flags |= SLR_POLICY_FLAG_MEASURED;
+    measured = check_drtm_policy(slrt, policy, policy_entry, mbi);
+    for ( i = 0; i < measured; i++ )
+        policy_entry[i].flags |= SLR_POLICY_FLAG_MEASURED;
 
-    for ( i = 2; i < policy->nr_entries; i++ )
+    for ( i = measured; i < policy->nr_entries; i++ )
     {
         uint64_t start = policy_entry[i].entity;
         uint64_t size = policy_entry[i].size;

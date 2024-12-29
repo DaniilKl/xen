@@ -184,12 +184,14 @@ struct slr_entry_intel_info
 struct slr_entry_amd_info
 {
     struct slr_entry_hdr hdr;
-    u64 next;
-    u32 type;
-    u32 len;
-    u64 slrt_size;
-    u64 slrt_base;
-    u64 boot_params_base;
+    uint64_t next;
+    uint32_t type;
+    uint32_t len;
+    uint64_t slrt_size;
+    uint64_t slrt_base;
+    uint64_t boot_params_base;
+    uint16_t psp_version;
+    uint16_t reserved[3];
 } __packed;
 
 /*

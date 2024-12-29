@@ -5,6 +5,7 @@
 #include <asm/processor.h>
 #include <asm/slaunch.h>
 #include <asm/tpm.h>
+#include <xen/efi.h>
 #include <xen/init.h>
 #include <xen/mm.h>
 #include <xen/multiboot.h>
@@ -229,10 +230,21 @@ static unsigned int check_drtm_policy(struct slr_table *slrt,
     uint32_t i;
     module_t *mods;
     uint32_t num_mod_entries;
+    int min_entries;
 
-    if ( policy->nr_entries < 2 )
-        panic("DRTM policy in SLRT contains less than 2 entries (%d)!\n",
-              policy->nr_entries);
+    min_entries = efi_enabled(EFI_BOOT) ? 1 : 2;
+    if ( policy->nr_entries < min_entries )
+        panic("DRTM policy in SLRT contains less than %d entries (%d)!\n",
+              min_entries, policy->nr_entries);
+
+    if ( efi_enabled(EFI_BOOT) )
+    {
+        check_slrt_policy_entry(&policy_entry[0], 0, slrt);
+        /* SLRT was measured in tpm_measure_slrt(). */
+        return 1;
+    }
+
+    /* This must be legacy MultiBoot2 boot. */
 
     /* MBI policy entry must be the first one, so that measuring order matches
      * policy order. */
@@ -351,5 +363,50 @@ void tpm_process_drtm_policy(const multiboot_info_t *mbi)
                                 TPM_EVENT_INFO_LENGTH));
 
         policy_entry[i].flags |= SLR_POLICY_FLAG_MEASURED;
+    }
+
+    /*
+     * On x86 EFI platforms Xen reads its command-line options and kernel/initrd
+     * from configuration files (several can be chained). Bootloader can't know
+     * contents of the configuration beforehand without parsing it, so there
+     * will be no corresponding policy entries. Instead, measure command-line
+     * and all modules here.
+     */
+    if ( efi_enabled(EFI_BOOT) )
+    {
+#define LOG_DATA(str) (uint8_t *)(str), (sizeof(str) - 1)
+        module_t *mods;
+        void *cmdline = __va(mbi->cmdline);
+
+        tpm_hash_extend(DRTM_LOC, DRTM_DATA_PCR, cmdline, strlen(cmdline),
+                        DLE_EVTYPE_SLAUNCH, LOG_DATA("Xen's command line"));
+
+        mods = __va(mbi->mods_addr);
+
+        for ( i = 0; i < mbi->mods_count; i++ )
+        {
+            const module_t *mod = &mods[i];
+
+            paddr_t string = mod->string;
+            paddr_t start = (paddr_t)mod->mod_start << PAGE_SHIFT;
+            size_t size = mod->mod_end;
+
+            /*
+             * Measuring module's name separately because module's command-line
+             * parameters are appended to its name when present.
+             *
+             * 2 MiB is minimally mapped size and it should more than suffice.
+             */
+            map_l2(string, 2 * 1024 * 1024);
+            tpm_hash_extend(DRTM_LOC, DRTM_DATA_PCR,
+                            __va(string), strlen(__va(string)),
+                            DLE_EVTYPE_SLAUNCH, LOG_DATA("MB module string"));
+
+            map_l2(start, size);
+            tpm_hash_extend(DRTM_LOC, DRTM_CODE_PCR, __va(start), size,
+                            DLE_EVTYPE_SLAUNCH, LOG_DATA("MB module"));
+        }
+
+#undef LOG_DATA
     }
 }

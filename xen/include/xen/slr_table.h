@@ -97,6 +97,8 @@ struct slr_bl_context
     uint64_t context;
 } __packed;
 
+typedef void (*dl_handler_func)(struct slr_bl_context *bl_context);
+
 /*
  * DRTM Dynamic Launch Configuration
  */

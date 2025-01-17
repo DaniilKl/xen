@@ -329,6 +329,100 @@ static inline int is_in_pmr(struct txt_os_sinit_data *os_sinit, uint64_t base,
     return 0;
 }
 
+static inline void *txt_init(void)
+{
+    void *txt_heap;
+
+    /* Clear the TXT error registers for a clean start of day */
+    write_txt_reg(TXTCR_ERRORCODE, 0);
+
+    txt_heap = _p(read_txt_reg(TXTCR_HEAP_BASE));
+
+    if ( txt_os_mle_data_size(txt_heap) < sizeof(struct txt_os_mle_data) ||
+         txt_os_sinit_data_size(txt_heap) < sizeof(struct txt_os_sinit_data) )
+        txt_reset(SLAUNCH_ERROR_GENERIC);
+
+    return txt_heap;
+}
+
+static inline void txt_verify_pmr_ranges(struct txt_os_mle_data *os_mle,
+                                         struct txt_os_sinit_data *os_sinit,
+                                         uint32_t load_base_addr,
+                                         uint64_t tgt_base_addr,
+                                         uint32_t xen_size)
+{
+    int check_high_pmr = 0;
+
+    /* Verify the value of the low PMR base. It should always be 0. */
+    if ( os_sinit->vtd_pmr_lo_base != 0 )
+        txt_reset(SLAUNCH_ERROR_LO_PMR_BASE);
+
+    /*
+     * Low PMR size should not be 0 on current platforms. There is an ongoing
+     * transition to TPR-based DMA protection instead of PMR-based; this is not
+     * yet supported by the code.
+     */
+    if ( os_sinit->vtd_pmr_lo_size == 0 )
+        txt_reset(SLAUNCH_ERROR_LO_PMR_SIZE);
+
+    /* Check if regions overlap. Treat regions with no hole between as error. */
+    if ( os_sinit->vtd_pmr_hi_size != 0 &&
+         os_sinit->vtd_pmr_hi_base <= os_sinit->vtd_pmr_lo_size )
+        txt_reset(SLAUNCH_ERROR_HI_PMR_BASE);
+
+    /* All regions accessed by 32b code must be below 4G. */
+    if ( os_sinit->vtd_pmr_hi_base + os_sinit->vtd_pmr_hi_size <=
+         0x100000000ull )
+        check_high_pmr = 1;
+
+    /*
+     * ACM checks that TXT heap and MLE memory is protected against DMA. We have
+     * to check if MBI and whole Xen memory is protected. The latter is done in
+     * case bootloader failed to set whole image as MLE and to make sure that
+     * both pre- and post-relocation code is protected.
+     */
+
+    /* Check if all of Xen before relocation is covered by PMR. */
+    if ( !is_in_pmr(os_sinit, load_base_addr, xen_size, check_high_pmr) )
+        txt_reset(SLAUNCH_ERROR_LO_PMR_MLE);
+
+    /* Check if all of Xen after relocation is covered by PMR. */
+    if ( load_base_addr != tgt_base_addr &&
+         !is_in_pmr(os_sinit, tgt_base_addr, xen_size, check_high_pmr) )
+        txt_reset(SLAUNCH_ERROR_LO_PMR_MLE);
+
+    /* Check if MBI is covered by PMR. MBI starts with 'uint32_t total_size'. */
+    if ( !is_in_pmr(os_sinit, os_mle->boot_params_addr,
+                    *(uint32_t *)(uintptr_t)os_mle->boot_params_addr,
+                    check_high_pmr) )
+        txt_reset(SLAUNCH_ERROR_BUFFER_BEYOND_PMR);
+
+    /* Check if TPM event log (if present) is covered by PMR. */
+    /*
+     * FIXME: currently commented out as GRUB allocates it in a hole between
+     * PMR and reserved RAM, due to 2MB resolution of PMR. There are no other
+     * easy-to-use DMA protection mechanisms that would allow to protect that
+     * part of memory. TPR (TXT DMA Protection Range) gives 1MB resolution, but
+     * it still wouldn't be enough.
+     *
+     * One possible solution would be for GRUB to allocate log at lower address,
+     * but this would further increase memory space fragmentation. Another
+     * option is to align PMR up instead of down, making PMR cover part of
+     * reserved region, but it is unclear what the consequences may be.
+     *
+     * In tboot this issue was resolved by reserving leftover chunks of memory
+     * in e820 and/or UEFI memory map. This is also a valid solution, but would
+     * require more changes to GRUB than the ones listed above, as event log is
+     * allocated much earlier than PMRs.
+     */
+    /*
+    if ( os_mle->evtlog_addr != 0 && os_mle->evtlog_size != 0 &&
+         !is_in_pmr(os_sinit, os_mle->evtlog_addr, os_mle->evtlog_size,
+                    check_high_pmr) )
+        txt_reset(SLAUNCH_ERROR_BUFFER_BEYOND_PMR);
+    */
+}
+
 extern void map_txt_mem_regions(void);
 extern void protect_txt_mem_regions(void);
 extern void txt_restore_mtrrs(bool e820_verbose);

@@ -59,17 +59,18 @@
 #define SLAUNCH_ERROR_HI_PMR_BASE            0xc0008014
 #define SLAUNCH_ERROR_HI_PMR_SIZE            0xc0008015
 #define SLAUNCH_ERROR_LO_PMR_BASE            0xc0008016
-#define SLAUNCH_ERROR_LO_PMR_MLE             0xc0008017
-#define SLAUNCH_ERROR_INITRD_TOO_BIG         0xc0008018
-#define SLAUNCH_ERROR_HEAP_ZERO_OFFSET       0xc0008019
-#define SLAUNCH_ERROR_WAKE_BLOCK_TOO_SMALL   0xc000801a
-#define SLAUNCH_ERROR_MLE_BUFFER_OVERLAP     0xc000801b
-#define SLAUNCH_ERROR_BUFFER_BEYOND_PMR      0xc000801c
-#define SLAUNCH_ERROR_OS_SINIT_BAD_VERSION   0xc000801d
-#define SLAUNCH_ERROR_EVENTLOG_MAP           0xc000801e
-#define SLAUNCH_ERROR_TPM_NUMBER_ALGS        0xc000801f
-#define SLAUNCH_ERROR_TPM_UNKNOWN_DIGEST     0xc0008020
-#define SLAUNCH_ERROR_TPM_INVALID_EVENT      0xc0008021
+#define SLAUNCH_ERROR_LO_PMR_SIZE            0xc0008017
+#define SLAUNCH_ERROR_LO_PMR_MLE             0xc0008018
+#define SLAUNCH_ERROR_INITRD_TOO_BIG         0xc0008019
+#define SLAUNCH_ERROR_HEAP_ZERO_OFFSET       0xc000801a
+#define SLAUNCH_ERROR_WAKE_BLOCK_TOO_SMALL   0xc000801b
+#define SLAUNCH_ERROR_MLE_BUFFER_OVERLAP     0xc000801c
+#define SLAUNCH_ERROR_BUFFER_BEYOND_PMR      0xc000801d
+#define SLAUNCH_ERROR_OS_SINIT_BAD_VERSION   0xc000801e
+#define SLAUNCH_ERROR_EVENTLOG_MAP           0xc000801f
+#define SLAUNCH_ERROR_TPM_NUMBER_ALGS        0xc0008020
+#define SLAUNCH_ERROR_TPM_UNKNOWN_DIGEST     0xc0008021
+#define SLAUNCH_ERROR_TPM_INVALID_EVENT      0xc0008022
 
 #define SLAUNCH_BOOTLOADER_MAGIC             0x4c534254
 
@@ -86,11 +87,12 @@
 extern char txt_ap_entry[];
 extern uint32_t trampoline_gdt[];
 
+#include <xen/types.h>
+
 /* We need to differentiate between pre- and post paging enabled. */
 #ifdef __BOOT_DEFS_H__
 #define _txt(x) _p(x)
 #else
-#include <xen/types.h>
 #include <asm/page.h>   // __va()
 #define _txt(x) __va(x)
 #endif

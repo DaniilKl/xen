@@ -129,9 +129,10 @@ static inline void txt_reset(uint32_t error)
  */
 struct txt_os_mle_data {
     uint32_t version;
-    uint32_t boot_params_addr;
-    uint32_t slrt;
-    uint32_t txt_info;
+    uint32_t reserved;
+    uint64_t boot_params_addr;
+    uint64_t slrt;
+    uint64_t txt_info;
     uint32_t ap_wake_block;
     uint32_t ap_wake_block_size;
     uint8_t mle_scratch[64];

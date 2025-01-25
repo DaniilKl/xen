@@ -87,6 +87,7 @@
 extern char txt_ap_entry[];
 extern uint32_t trampoline_gdt[];
 
+#include <xen/slr_table.h>
 #include <xen/types.h>
 
 /* We need to differentiate between pre- and post paging enabled. */
@@ -130,7 +131,6 @@ static inline void txt_reset(uint32_t error)
 struct txt_os_mle_data {
     uint32_t version;
     uint32_t reserved;
-    uint64_t boot_params_addr;
     uint64_t slrt;
     uint64_t txt_info;
     uint32_t ap_wake_block;
@@ -348,6 +348,7 @@ static inline void *txt_init(void)
 
 static inline void txt_verify_pmr_ranges(struct txt_os_mle_data *os_mle,
                                          struct txt_os_sinit_data *os_sinit,
+                                         struct slr_entry_intel_info *info,
                                          uint32_t load_base_addr,
                                          uint64_t tgt_base_addr,
                                          uint32_t xen_size)
@@ -393,8 +394,8 @@ static inline void txt_verify_pmr_ranges(struct txt_os_mle_data *os_mle,
         txt_reset(SLAUNCH_ERROR_LO_PMR_MLE);
 
     /* Check if MBI is covered by PMR. MBI starts with 'uint32_t total_size'. */
-    if ( !is_in_pmr(os_sinit, os_mle->boot_params_addr,
-                    *(uint32_t *)(uintptr_t)os_mle->boot_params_addr,
+    if ( !is_in_pmr(os_sinit, info->boot_params_base,
+                    *(uint32_t *)(uintptr_t)info->boot_params_base,
                     check_high_pmr) )
         txt_reset(SLAUNCH_ERROR_BUFFER_BEYOND_PMR);
 

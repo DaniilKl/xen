@@ -68,7 +68,9 @@ void __stdcall slaunch_early_tests(uint32_t load_base_addr,
 {
     void *txt_heap;
     struct txt_os_mle_data *os_mle;
+    struct slr_table *slrt;
     struct txt_os_sinit_data *os_sinit;
+    struct slr_entry_intel_info *intel_info;
     uint32_t size = tgt_end_addr - tgt_base_addr;
 
     if ( !is_intel_cpu() )
@@ -77,7 +79,6 @@ void __stdcall slaunch_early_tests(uint32_t load_base_addr,
          * Not an Intel CPU. Currently the only other option is AMD with SKINIT
          * and secure-kernel-loader (SKL).
          */
-        struct slr_table *slrt;
         struct slr_entry_amd_info *amd_info;
         const struct skinit_sl_header *sl_header = (void *)slaunch_param;
 
@@ -104,9 +105,18 @@ void __stdcall slaunch_early_tests(uint32_t load_base_addr,
     os_mle = txt_os_mle_data_start(txt_heap);
     os_sinit = txt_os_sinit_data_start(txt_heap);
 
-    txt_verify_pmr_ranges(os_mle, os_sinit, load_base_addr, tgt_base_addr,
-                          size);
-
-    result->mbi_pa = os_mle->boot_params_addr;
     result->slrt_pa = os_mle->slrt;
+    result->mbi_pa = 0;
+
+    slrt = (struct slr_table *)result->slrt_pa;
+
+    intel_info = (struct slr_entry_intel_info *)
+               slr_next_entry_by_tag (slrt, NULL, SLR_ENTRY_INTEL_INFO);
+    if ( intel_info == NULL || intel_info->hdr.size != sizeof(*intel_info) )
+        return;
+
+    result->mbi_pa = intel_info->boot_params_base;
+
+    txt_verify_pmr_ranges(os_mle, os_sinit, intel_info,
+                          load_base_addr, tgt_base_addr, size);
 }

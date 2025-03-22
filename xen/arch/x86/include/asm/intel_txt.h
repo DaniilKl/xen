@@ -393,8 +393,10 @@ static inline void txt_verify_pmr_ranges(struct txt_os_mle_data *os_mle,
          !is_in_pmr(os_sinit, tgt_base_addr, xen_size, check_high_pmr) )
         txt_reset(SLAUNCH_ERROR_LO_PMR_MLE);
 
-    /* Check if MBI is covered by PMR. MBI starts with 'uint32_t total_size'. */
-    if ( !is_in_pmr(os_sinit, info->boot_params_base,
+    /* Check if MBI is covered by PMR. MBI starts with 'uint32_t total_size'.
+     * There is no MBI on EFI boot. */
+    if ( info->boot_params_base != 0 &&
+         !is_in_pmr(os_sinit, info->boot_params_base,
                     *(uint32_t *)(uintptr_t)info->boot_params_base,
                     check_high_pmr) )
         txt_reset(SLAUNCH_ERROR_BUFFER_BEYOND_PMR);

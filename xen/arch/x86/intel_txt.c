@@ -120,19 +120,11 @@ static void enable_mtrrs(bool pge)
 
 void __init txt_restore_mtrrs(bool e820_verbose)
 {
-    struct txt_os_mle_data *os_mle;
     struct slr_table *slrt;
     struct slr_entry_intel_info *intel_info;
-    int os_mle_size;
     uint64_t mtrr_cap, mtrr_def, base, mask;
     unsigned int i;
     bool pge;
-
-    os_mle_size = txt_os_mle_data_size(__va(txt_heap_base));
-    os_mle = txt_os_mle_data_start(__va(txt_heap_base));
-
-    if ( os_mle_size < sizeof(*os_mle) )
-        panic("OS-MLE too small\n");
 
     rdmsrl(MSR_MTRRcap, mtrr_cap);
     rdmsrl(MSR_MTRRdefType, mtrr_def);
@@ -151,7 +143,7 @@ void __init txt_restore_mtrrs(bool e820_verbose)
         }
     }
 
-    slrt = __va(os_mle->slrt);
+    slrt = (struct slr_table *)(uintptr_t)slaunch_slrt;
     intel_info = (struct slr_entry_intel_info *)
         slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_INTEL_INFO);
 

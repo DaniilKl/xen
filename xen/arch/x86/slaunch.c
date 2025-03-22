@@ -55,59 +55,6 @@ static uint32_t get_slb_start(void)
     return slaunch_slrt & ~(SKINIT_SLB_SIZE - 1);
 }
 
-void __init map_slaunch_mem_regions(void)
-{
-    void *evt_log_addr;
-    uint32_t evt_log_size;
-
-    map_l2(TPM_TIS_BASE, TPM_TIS_SIZE);
-
-    /* Vendor-specific part. */
-    if ( boot_cpu_data.x86_vendor == X86_VENDOR_INTEL )
-    {
-        map_txt_mem_regions();
-    }
-    else if ( boot_cpu_data.x86_vendor == X86_VENDOR_AMD )
-    {
-        map_l2(get_slb_start(), SKINIT_SLB_SIZE);
-    }
-
-    find_evt_log(__va(slaunch_slrt), &evt_log_addr, &evt_log_size);
-    if ( evt_log_addr != NULL )
-        map_l2((unsigned long)evt_log_addr, evt_log_size);
-}
-
-void __init protect_slaunch_mem_regions(void)
-{
-    void *evt_log_addr;
-    uint32_t evt_log_size;
-
-    find_evt_log(__va(slaunch_slrt), &evt_log_addr, &evt_log_size);
-    if ( evt_log_addr != 0 )
-    {
-        printk("SLAUNCH: reserving event log (%#lx - %#lx)\n",
-               (uint64_t)evt_log_addr,
-               (uint64_t)evt_log_addr + evt_log_size);
-        e820_change_range_type(&e820_raw, (uint64_t)evt_log_addr,
-                               (uint64_t)evt_log_addr + evt_log_size,
-                               E820_RAM, E820_RESERVED);
-    }
-
-    /* Vendor-specific part. */
-    if ( boot_cpu_data.x86_vendor == X86_VENDOR_INTEL )
-    {
-        protect_txt_mem_regions();
-    }
-    else if ( boot_cpu_data.x86_vendor == X86_VENDOR_AMD )
-    {
-        uint64_t slb_start = get_slb_start();
-        uint64_t slb_end = slb_start + SKINIT_SLB_SIZE;
-        printk("SLAUNCH: reserving SLB (%#lx - %#lx)\n", slb_start, slb_end);
-        e820_change_range_type(&e820_raw, slb_start, slb_end,
-                               E820_RAM, E820_RESERVED);
-    }
-}
-
 static struct slr_table *slr_get_table(void)
 {
     bool intel_cpu = (boot_cpu_data.x86_vendor == X86_VENDOR_INTEL);
@@ -133,6 +80,59 @@ static struct slr_table *slr_get_table(void)
         map_l2(slaunch_slrt, slrt->size);
 
     return slrt;
+}
+
+void __init map_slaunch_mem_regions(void)
+{
+    void *evt_log_addr;
+    uint32_t evt_log_size;
+
+    map_l2(TPM_TIS_BASE, TPM_TIS_SIZE);
+
+    /* Vendor-specific part. */
+    if ( boot_cpu_data.x86_vendor == X86_VENDOR_INTEL )
+    {
+        map_txt_mem_regions();
+    }
+    else if ( boot_cpu_data.x86_vendor == X86_VENDOR_AMD )
+    {
+        map_l2(get_slb_start(), SKINIT_SLB_SIZE);
+    }
+
+    find_evt_log(slr_get_table(), &evt_log_addr, &evt_log_size);
+    if ( evt_log_addr != NULL )
+        map_l2((unsigned long)evt_log_addr, evt_log_size);
+}
+
+void __init protect_slaunch_mem_regions(void)
+{
+    void *evt_log_addr;
+    uint32_t evt_log_size;
+
+    find_evt_log(slr_get_table(), &evt_log_addr, &evt_log_size);
+    if ( evt_log_addr != 0 )
+    {
+        printk("SLAUNCH: reserving event log (%#lx - %#lx)\n",
+               (uint64_t)evt_log_addr,
+               (uint64_t)evt_log_addr + evt_log_size);
+        e820_change_range_type(&e820_raw, (uint64_t)evt_log_addr,
+                               (uint64_t)evt_log_addr + evt_log_size,
+                               E820_RAM, E820_RESERVED);
+    }
+
+    /* Vendor-specific part. */
+    if ( boot_cpu_data.x86_vendor == X86_VENDOR_INTEL )
+    {
+        protect_txt_mem_regions();
+    }
+    else if ( boot_cpu_data.x86_vendor == X86_VENDOR_AMD )
+    {
+        uint64_t slb_start = get_slb_start();
+        uint64_t slb_end = slb_start + SKINIT_SLB_SIZE;
+        printk("SLAUNCH: reserving SLB (%#lx - %#lx)\n", slb_start, slb_end);
+        e820_change_range_type(&e820_raw, slb_start, slb_end,
+                               E820_RAM, E820_RESERVED);
+    }
 }
 
 void tpm_measure_slrt(void)

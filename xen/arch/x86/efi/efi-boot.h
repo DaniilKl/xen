@@ -9,8 +9,15 @@
 #include <asm/microcode.h>
 #include <asm/msr.h>
 #include <asm/setup.h>
-#include <asm/intel_txt.h>
 #include <asm/slaunch.h>
+
+/*
+ * Make <asm/intel_txt.h> access TXT registers without address translation which
+ * is not set up at this point.
+ */
+#define __BOOT_DEFS_H__
+#include <asm/intel_txt.h>
+#undef __BOOT_DEFS_H__
 
 static struct file __initdata ucode;
 static uint64_t __initdata image_size;

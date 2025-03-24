@@ -259,7 +259,7 @@ void __init noreturn start_xen_from_efi(void)
                 txt_os_sinit_data_start(txt_heap);
 
             txt_verify_pmr_ranges(os_mle, os_sinit, intel_info, xen_phys_start,
-                                  __XEN_VIRT_START, image_size);
+                                  xen_phys_start, image_size);
         }
     }
 

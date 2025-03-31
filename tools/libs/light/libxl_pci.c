@@ -1486,7 +1486,7 @@ static void pci_add_dm_done(libxl__egc *egc,
         LOGED(ERROR, domainid, "Couldn't open %s", sysfs_path);
         goto out_no_irq;
     }
-    if ((fscanf(f, "%u", &irq) == 1) && irq) {
+    if ((fscanf(f, "%u", &irq) == 1) && irq > 0 && irq < 0xff) {
         r = xc_physdev_map_pirq(ctx->xch, domid, irq, &irq);
         if (r < 0) {
             LOGED(ERROR, domainid, "xc_physdev_map_pirq irq=%d (error=%d)",

@@ -633,6 +633,9 @@ bool libxl__is_igd_vga_passthru(libxl__gc *gc,
             pt_vendor != 0x8086)
             continue;
 
+        /* Skip VF, those don't need QEMU hack */
+        if (pci->func)
+            continue;
         if (sysfs_dev_get_class(gc, pci, &class))
             continue;
         if (class == 0x030000 || class == 0x038000)

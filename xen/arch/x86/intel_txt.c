@@ -143,7 +143,7 @@ void __init txt_restore_mtrrs(bool e820_verbose)
         }
     }
 
-    slrt = (struct slr_table *)(uintptr_t)slaunch_slrt;
+    slrt = __va(slaunch_slrt);
     intel_info = (struct slr_entry_intel_info *)
         slr_next_entry_by_tag(slrt, NULL, SLR_ENTRY_INTEL_INFO);
 

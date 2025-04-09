@@ -30,17 +30,39 @@ void __init map_txt_mem_regions(void)
     map_l2(txt_heap_base, txt_heap_size);
 }
 
+/* Mark RAM region as RESERVED if it isn't marked that way already. */
+static int __init reserve_e820(struct e820map *e820, uint64_t s, uint64_t e)
+{
+    unsigned int i;
+
+    for ( i = 0; i < e820->nr_map; i++ )
+    {
+        uint64_t rs = e820->map[i].addr;
+        uint64_t re = rs + e820->map[i].size;
+        if ( s >= rs && e <= re )
+            break;
+    }
+
+    if ( i != e820->nr_map && e820->map[i].type == E820_RESERVED )
+    {
+        /* Nothing to do, the range is already covered as reserved. */
+        return 1;
+    }
+
+    return reserve_e820_ram(e820, s, e);
+}
+
 void __init protect_txt_mem_regions(void)
 {
+    int rc;
     uint64_t sinit_base, sinit_size;
 
     /* TXT Heap */
     BUG_ON(txt_heap_base == 0);
     printk("SLAUNCH: reserving TXT heap (%#lx - %#lx)\n", txt_heap_base,
            txt_heap_base + txt_heap_size);
-    e820_change_range_type(&e820_raw, txt_heap_base,
-                           txt_heap_base + txt_heap_size,
-                           E820_RAM, E820_RESERVED);
+    rc = reserve_e820(&e820_raw, txt_heap_base, txt_heap_base + txt_heap_size);
+    BUG_ON(rc == 0);
 
     sinit_base = read_txt_reg(TXTCR_SINIT_BASE);
     BUG_ON(sinit_base == 0);
@@ -51,9 +73,8 @@ void __init protect_txt_mem_regions(void)
     /* SINIT */
     printk("SLAUNCH: reserving SINIT memory (%#lx - %#lx)\n", sinit_base,
            sinit_base + sinit_size);
-    e820_change_range_type(&e820_raw, sinit_base,
-                           sinit_base + sinit_size,
-                           E820_RAM, E820_RESERVED);
+    rc = reserve_e820(&e820_raw, sinit_base, sinit_base + sinit_size);
+    BUG_ON(rc == 0);
 
     /* TXT Private Space */
     e820_change_range_type(&e820_raw, TXT_PRIV_CONFIG_REGS_BASE,

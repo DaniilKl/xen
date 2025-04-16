@@ -396,9 +396,7 @@ static bool set_mtrr_var_ranges(unsigned int index, struct mtrr_var_range *vr)
 	return changed;
 }
 
-static uint64_t deftype;
-
-static unsigned long set_mtrr_state(void)
+static unsigned long set_mtrr_state(uint64_t *deftype)
 /*  [SUMMARY] Set the MTRR state for this CPU.
     <state> The MTRR state information to read.
     <ctxt> Some relevant CPU context.
@@ -416,14 +414,12 @@ static unsigned long set_mtrr_state(void)
 	if (mtrr_state.have_fixed && set_fixed_ranges(mtrr_state.fixed_ranges))
 		change_mask |= MTRR_CHANGE_MASK_FIXED;
 
-	/*  Set_mtrr_restore restores the old value of MTRRdefType,
-	   so to set it we fiddle with the saved value  */
-	if ((deftype & 0xff) != mtrr_state.def_type
-	    || MASK_EXTR(deftype, MTRRdefType_E) != mtrr_state.enabled
-	    || MASK_EXTR(deftype, MTRRdefType_FE) != mtrr_state.fixed_enabled) {
-		deftype = (deftype & ~0xcff) | mtrr_state.def_type |
-		          MASK_INSR(mtrr_state.enabled, MTRRdefType_E) |
-		          MASK_INSR(mtrr_state.fixed_enabled, MTRRdefType_FE);
+	if ((*deftype & 0xff) != mtrr_state.def_type
+	    || MASK_EXTR(*deftype, MTRRdefType_E) != mtrr_state.enabled
+	    || MASK_EXTR(*deftype, MTRRdefType_FE) != mtrr_state.fixed_enabled) {
+		*deftype = (*deftype & ~0xcff) | mtrr_state.def_type |
+		           MASK_INSR(mtrr_state.enabled, MTRRdefType_E) |
+		           MASK_INSR(mtrr_state.fixed_enabled, MTRRdefType_FE);
 		change_mask |= MTRR_CHANGE_MASK_DEFTYPE;
 	}
 
@@ -440,9 +436,10 @@ static DEFINE_SPINLOCK(set_atomicity_lock);
  * has been called.
  */
 
-static bool prepare_set(void)
+struct mtrr_pausing_state mtrr_pause_caching(void)
 {
 	unsigned long cr4;
+	struct mtrr_pausing_state state;
 
 	/*  Note that this is not ideal, since the cache is only flushed/disabled
 	   for this CPU while the MTRRs are changed, but changing this requires
@@ -462,7 +459,9 @@ static bool prepare_set(void)
 	alternative("wbinvd", "", X86_FEATURE_XEN_SELFSNOOP);
 
 	cr4 = read_cr4();
-	if (cr4 & X86_CR4_PGE)
+	state.pge = cr4 & X86_CR4_PGE;
+
+	if (state.pge)
 		write_cr4(cr4 & ~X86_CR4_PGE);
 	else if (use_invpcid)
 		invpcid_flush_all();
@@ -470,27 +469,27 @@ static bool prepare_set(void)
 		write_cr3(read_cr3());
 
 	/*  Save MTRR state */
-	rdmsrl(MSR_MTRRdefType, deftype);
+	rdmsrl(MSR_MTRRdefType, state.def_type);
 
 	/*  Disable MTRRs, and set the default type to uncached  */
-	mtrr_wrmsr(MSR_MTRRdefType, deftype & ~0xcff);
+	mtrr_wrmsr(MSR_MTRRdefType, state.def_type & ~0xcff);
 
 	/* Again, only flush caches if we have to. */
 	alternative("wbinvd", "", X86_FEATURE_XEN_SELFSNOOP);
 
-	return cr4 & X86_CR4_PGE;
+	return state;
 }
 
-static void post_set(bool pge)
+void mtrr_resume_caching(struct mtrr_pausing_state state)
 {
 	/* Intel (P6) standard MTRRs */
-	mtrr_wrmsr(MSR_MTRRdefType, deftype);
+	mtrr_wrmsr(MSR_MTRRdefType, state.def_type);
 
 	/*  Enable caches  */
 	write_cr0(read_cr0() & ~X86_CR0_CD);
 
 	/*  Reenable CR4.PGE (also flushes the TLB) */
-	if (pge)
+	if (state.pge)
 		write_cr4(read_cr4() | X86_CR4_PGE);
 	else if (use_invpcid)
 		invpcid_flush_all();
@@ -504,15 +503,15 @@ void mtrr_set_all(void)
 {
 	unsigned long mask, count;
 	unsigned long flags;
-	bool pge;
+	struct mtrr_pausing_state pausing_state;
 
 	local_irq_save(flags);
-	pge = prepare_set();
+	pausing_state = mtrr_pause_caching();
 
 	/* Actually set the state */
-	mask = set_mtrr_state();
+	mask = set_mtrr_state(&pausing_state.def_type);
 
-	post_set(pge);
+	mtrr_resume_caching(pausing_state);
 	local_irq_restore(flags);
 
 	/*  Use the atomic bitops to update the global mask  */
@@ -537,12 +536,12 @@ void mtrr_set(
 {
 	unsigned long flags;
 	struct mtrr_var_range *vr;
-	bool pge;
+	struct mtrr_pausing_state pausing_state;
 
 	vr = &mtrr_state.var_ranges[reg];
 
 	local_irq_save(flags);
-	pge = prepare_set();
+	pausing_state = mtrr_pause_caching();
 
 	if (size == 0) {
 		/* The invalid bit is kept in the mask, so we simply clear the
@@ -563,7 +562,7 @@ void mtrr_set(
 		mtrr_wrmsr(MSR_IA32_MTRR_PHYSMASK(reg), vr->mask);
 	}
 
-	post_set(pge);
+	mtrr_resume_caching(pausing_state);
 	local_irq_restore(flags);
 }
 

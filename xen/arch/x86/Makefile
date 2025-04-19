@@ -61,6 +61,7 @@ obj-$(CONFIG_X86_PSR) += psr.o
 obj-bin-$(CONFIG_DEBUG) += scrub-page.o
 obj-y += setup.o
 obj-y += shutdown.o
+obj-$(CONFIG_SLAUNCH) += slaunch.o
 obj-y += smp.o
 obj-y += smpboot.o
 obj-y += spec_ctrl.o

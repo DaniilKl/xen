@@ -472,6 +472,10 @@ __start:
         /* Bootloaders may set multiboot{1,2}.mem_lower to a nonzero value. */
         xor     %edx,%edx
 
+        /* Check for TrenchBoot slaunch bootloader. */
+        cmp     $SLAUNCH_BOOTLOADER_MAGIC, %eax
+        je      .Lslaunch_proto
+
         /* Check for Multiboot2 bootloader. */
         cmp     $MULTIBOOT2_BOOTLOADER_MAGIC,%eax
         je      .Lmultiboot2_proto
@@ -486,6 +490,45 @@ __start:
         /* Not available? BDA value will be fine. */
         cmovnz  MB_mem_lower(%ebx),%edx
         jmp     trampoline_bios_setup
+
+.Lslaunch_proto:
+        /*
+         * Upon reaching here, CPU state mostly matches the one setup by the
+         * bootloader with ESP, ESI and EDX being clobbered above.
+         */
+
+        /* Save information that TrenchBoot slaunch was used. */
+        movb    $1, sym_esi(slaunch_active)
+
+        /*
+         * Prepare space for output parameter of slaunch_early_init(), which is
+         * a structure of two uint32_t fields.
+         */
+        sub     $8, %esp
+
+        push    %esp                             /* pointer to output structure */
+        lea     sym_offs(__2M_rwdata_end), %ecx  /* end of target image */
+        lea     sym_offs(_start), %edx           /* target base address */
+        mov     %esi, %eax                       /* load base address */
+        /*
+         * slaunch_early_init(load/eax, tgt/edx, tgt_end/ecx, ret/stk) using
+         * fastcall calling convention.
+         */
+        call    slaunch_early_init
+        add     $4, %esp                         /* pop the fourth parameter */
+
+        /* Move outputs of slaunch_early_init() from stack into registers. */
+        pop     %eax  /* physical MBI address */
+        pop     %edx  /* physical SLRT address */
+
+        /* Save physical address of SLRT for C code. */
+        mov     %edx, sym_esi(slaunch_slrt)
+
+        /* Store MBI address in EBX where MB2 code expects it. */
+        mov     %eax, %ebx
+
+        /* Move magic number expected by Multiboot 2 to EAX and fall through. */
+        movl    $MULTIBOOT2_BOOTLOADER_MAGIC, %eax
 
 .Lmultiboot2_proto:
         /* Skip Multiboot2 information fixed part. */

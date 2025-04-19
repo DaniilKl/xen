@@ -269,4 +269,20 @@ static inline void *txt_sinit_mle_data_start(void *heap)
         sizeof(uint64_t);
 }
 
+static inline void *txt_init(void)
+{
+    void *txt_heap;
+
+    /* Clear the TXT error register for a clean start of the day. */
+    write_txt_reg(TXTCR_ERRORCODE, 0);
+
+    txt_heap = _p(read_txt_reg(TXTCR_HEAP_BASE));
+
+    if ( txt_os_mle_data_size(txt_heap) < sizeof(struct txt_os_mle_data) ||
+         txt_os_sinit_data_size(txt_heap) < sizeof(struct txt_os_sinit_data) )
+        txt_reset(SLAUNCH_ERROR_GENERIC);
+
+    return txt_heap;
+}
+
 #endif /* __ASSEMBLY__ */

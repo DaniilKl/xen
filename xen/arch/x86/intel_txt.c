@@ -39,11 +39,29 @@ static int __init reserve_e820(struct e820map *e820, uint64_t s, uint64_t e)
     {
         uint64_t rs = e820->map[i].addr;
         uint64_t re = rs + e820->map[i].size;
+
+        /* The entry includes the range. */
         if ( s >= rs && e <= re )
             break;
+
+        /* The entry intersects the range. */
+        if ( e > rs && s < re )
+        {
+            /* Fatal failure. */
+            return 0;
+        }
     }
 
-    if ( i != e820->nr_map && e820->map[i].type == E820_RESERVED )
+    /*
+     * If the range is not included by any entry and no entry intersects it,
+     * then it's not listed in the memory map.  Consider this case as a success
+     * since we're only preventing RAM from being used and unlisted range should
+     * not be used.
+     */
+    if ( i == e820->nr_map )
+        return 1;
+
+    if ( e820->map[i].type == E820_RESERVED )
     {
         /* Nothing to do, the range is already covered as reserved. */
         return 1;

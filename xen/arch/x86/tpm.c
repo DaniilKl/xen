@@ -92,10 +92,12 @@ static bool is_amd_cpu(void)
 #define INTF_VERSION_MASK        0x70000000
 #define TPM_STS_(x)             TPM_LOC_REG(x, 0x18)
 #define TPM_FAMILY_MASK          0x0C000000
+#define STS_EXPECT_DATA          (1 << 3)
 #define STS_DATA_AVAIL           (1 << 4)
 #define STS_TPM_GO               (1 << 5)
 #define STS_COMMAND_READY        (1 << 6)
 #define STS_VALID                (1 << 7)
+#define TPM_BURST_COUNT_(x)     TPM_LOC_REG(x, 0x19)
 #define TPM_DATA_FIFO_(x)       TPM_LOC_REG(x, 0x24)
 
 #define swap16(x)       __builtin_bswap16(x)
@@ -104,6 +106,11 @@ static bool is_amd_cpu(void)
 static inline volatile uint32_t tis_read32(unsigned reg)
 {
     return *(volatile uint32_t *)__va(TPM_TIS_BASE + reg);
+}
+
+static inline volatile uint16_t tis_read16(unsigned reg)
+{
+    return *(volatile uint16_t *)__va(TPM_TIS_BASE + reg);
 }
 
 static inline volatile uint8_t tis_read8(unsigned reg)
@@ -128,16 +135,23 @@ static inline void relinquish_locality(unsigned loc)
     tis_write8(TPM_ACCESS_(loc), ACCESS_ACTIVE_LOCALITY);
 }
 
+static inline uint16_t get_burst_count(unsigned loc)
+{
+    return tis_read16(TPM_BURST_COUNT_(loc));
+}
+
 static void send_cmd(unsigned loc, uint8_t *buf, unsigned i_size,
                      unsigned *o_size)
 {
     /*
-     * Value of "data available" bit counts only when "valid" field is set as
-     * well.
+     * Values of "expect data" and "data available" bits counts only when
+     * "valid" field is set as well.
      */
+    const unsigned expect_data = STS_VALID | STS_EXPECT_DATA;
     const unsigned data_avail = STS_VALID | STS_DATA_AVAIL;
 
     unsigned i;
+    unsigned burst_count;
 
     /* Make sure TPM can accept a command. */
     if ( (tis_read8(TPM_STS_(loc)) & STS_COMMAND_READY) == 0 )
@@ -148,16 +162,37 @@ static void send_cmd(unsigned loc, uint8_t *buf, unsigned i_size,
         while ( (tis_read8(TPM_STS_(loc)) & STS_COMMAND_READY) == 0 );
     }
 
-    for ( i = 0; i < i_size; i++ )
-        tis_write8(TPM_DATA_FIFO_(loc), buf[i]);
+    i = 0;
+    while ( i < i_size )
+    {
+        do
+            burst_count = get_burst_count(loc);
+        while ( burst_count == 0 );
+
+        while ( burst_count-- > 0 && i < i_size )
+            tis_write8(TPM_DATA_FIFO_(loc), buf[i++]);
+
+        if ( i < i_size )
+            while ( (tis_read8(TPM_STS_(loc)) & expect_data) != expect_data );
+    }
 
     tis_write8(TPM_STS_(loc), STS_TPM_GO);
 
     /* Wait for the first byte of response. */
     while ( (tis_read8(TPM_STS_(loc)) & data_avail) != data_avail );
 
-    for ( i = 0; i < *o_size && tis_read8(TPM_STS_(loc)) & data_avail; i++ )
-        buf[i] = tis_read8(TPM_DATA_FIFO_(loc));
+    i = 0;
+    do {
+        do
+            burst_count = get_burst_count(loc);
+        while ( burst_count == 0 );
+
+        while ( burst_count-- > 0 && i < *o_size)
+            buf[i++] = tis_read8(TPM_DATA_FIFO_(loc));
+
+        while ( (tis_read8(TPM_STS_(loc)) & STS_VALID) == 0 );
+    } while ( i < *o_size &&
+              (tis_read8(TPM_STS_(loc)) & data_avail) == data_avail );
 
     if ( i < *o_size )
         *o_size = i;

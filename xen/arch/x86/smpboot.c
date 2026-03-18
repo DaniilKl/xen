@@ -447,12 +447,11 @@ static int wake_aps_in_txt(void)
               txt_start(__va(txt_read(TXTCR_HEAP_BASE)), TXT_SINIT2MLE);
     uint32_t *wakeup_addr = __va(sinit_mle->rlp_wakeup_addr);
 
-    uint32_t join[4] = {
-        trampoline_gdt[1],               /* GDT limit */
-        bootsym_phys(trampoline_gdt),    /* GDT base */
-        TXT_AP_BOOT_CS,                  /* CS selector, DS = CS+8 */
-        bootsym_phys(txt_ap_entry)       /* EIP */
-    };
+    static uint32_t join[4];
+    join[0] = trampoline_gdt[1];            /* GDT limit */
+    join[1] = bootsym_phys(trampoline_gdt); /* GDT base */
+    join[2] = TXT_AP_BOOT_CS;               /* CS selector, DS = CS+8 */
+    join[3] = bootsym_phys(txt_ap_entry);   /* EIP */
 
     txt_write(TXTCR_MLE_JOIN, __pa(join));
 

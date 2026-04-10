@@ -1,0 +1,27 @@
+name: Build the last successful automatic rebase of aem-next branch
+
+on:
+  create:
+    branches:
+      - 'aem-next-rebased'
+
+jobs:
+  qubes-dom0-package:
+    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
+    with:
+      qubes-component: 'vmm-xen'
+  trigger-woodpecker-cicd:
+    needs: qubes-dom0-package
+    uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script
+    secrets:
+      woodpecker-token: ${{ secrets.WOODPECKER_TOKEN }}
+    with:
+      api-url:  'https://ci.3mdeb.com'
+      owner:    'zarhus'
+      repo:     'trenchboot-release-cicd-pipeline'
+      ref:      'sign-and-publish-rc-rpms'
+      inputs: >-
+        --input GITHUB_REPO=xen
+        --input GITHUB_SHA=${{ github.sha }}
+        --input GITHUB_RUN_ID=${{ github.run_id }}
+        --input QUBES_COMPONENT=vmm-xen

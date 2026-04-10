@@ -1,0 +1,90 @@
+name: Rebase on top of QubesOS main and build RPMs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 6'
+
+jobs:
+  apply-qubes-patches:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout qubes-vmm-xen
+        uses: actions/checkout@v6
+        with:
+          repository: QubesOS/qubes-vmm-xen
+          path: qubes-vmm-xen
+
+      - name: Checkout downstream xen repository
+        uses: actions/checkout@v6
+        with:
+          repository: trenchboot/xen
+          token: ${{ secrets.TOKEN }}
+          path: xen
+
+      - name: Read upstream version from qubes-vmm-xen
+        id: version
+        run: echo "version=$(tr -d '[:space:]' < qubes-vmm-xen/version)" >> "$GITHUB_OUTPUT"
+
+      - name: Add upstream remote and fetch version tag
+        working-directory: xen
+        env:
+          UPSTREAM_TAG: RELEASE-${{ steps.version.outputs.version }}
+        run: |
+          git remote add upstream https://xenbits.xenproject.org/git-http/xen.git
+          git fetch upstream "refs/tags/${UPSTREAM_TAG}:refs/tags/${UPSTREAM_TAG}"
+
+      - name: Fix malformed patch header (split URL line in 0627 patch)
+        run: |
+          sed -i '/^: \[1\]:.*@s$/{N; s/\n//}' \
+            qubes-vmm-xen/0627-x86-mwait-idle-Use-ACPI-for-CPUs-without-hardcoded-C.patch
+
+      - name: Apply qubes-vmm-xen patches on top of upstream tag
+        working-directory: xen
+        env:
+          UPSTREAM_TAG: RELEASE-${{ steps.version.outputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b qubes-vmm-xen-with-patches-rebase-prep "$UPSTREAM_TAG"
+          git am ../qubes-vmm-xen/*.patch
+
+      - name: Push qubes-vmm-xen-with-patches branch to downstream
+        working-directory: xen
+        run: git push origin qubes-vmm-xen-with-patches-rebase-prep
+  try-rebase:
+    uses: TrenchBoot/.github/.github/workflows/rebase.yml@add-rebase-script
+    secrets:
+      first-remote-token: ${{secrets.TOKEN}}
+    permissions:
+      # For creation/deletion/pushing to branches and creating PRs
+      contents: write
+    with:
+      downstream-repo: 'https://github.com/trenchboot/xen.git'
+      downstream-branch: 'aem-next'
+      upstream-repo: 'https://github.com/trenchboot/xen.git'
+      upstream-branch: 'qubes-vmm-xen-with-patches'
+      commit-user-name: 'github-actions[bot]'
+      commit-user-email: 'github-actions[bot]@users.noreply.github.com'
+      cicd-trigger-resume: '7. Rerun the workflow https://github.com/TrenchBoot/qubes-antievilmaid/actions/runs/${{ github.run_id }} to resume automated rebase.'
+  cleanup-on-rebase-failure:
+    needs: try-rebase
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout downstream xen repository
+        uses: actions/checkout@v6
+        with:
+          repository: DaniilKl/xen
+          token: ${{ secrets.TOKEN }}
+          path: xen
+      - name: Delete qubes-vmm-xen-with-patches branch from downstream
+        working-directory: xen
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          git push "https://x-access-token:${TOKEN}@github.com/trenchboot/xen.git" \
+            --delete qubes-vmm-xen-with-patches

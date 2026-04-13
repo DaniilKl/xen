@@ -3,7 +3,7 @@ name: Build the last successful automatic rebase of aem-next branch
 on:
   create:
     branches:
-      - 'aem-next-rebased'
+      - 'aem-next-test-rebased'
 
 jobs:
   qubes-dom0-package:

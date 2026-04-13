@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * 6'
 
 jobs:
-  apply-qubes-patches:
+  prep-rebase:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,6 +55,7 @@ jobs:
         working-directory: xen
         run: git push origin qubes-vmm-xen-with-patches-rebase-prep
   try-rebase:
+    needs: prep-rebase
     uses: TrenchBoot/.github/.github/workflows/rebase.yml@add-rebase-script
     secrets:
       first-remote-token: ${{secrets.TOKEN}}
@@ -63,7 +64,7 @@ jobs:
       contents: write
     with:
       downstream-repo: 'https://github.com/DaniilKl/xen.git'
-      downstream-branch: 'aem-next'
+      downstream-branch: 'aem-next-test'
       upstream-repo: 'https://github.com/DaniilKl/xen.git'
       upstream-branch: 'qubes-vmm-xen-with-patches-rebase-prep'
       commit-user-name: 'github-actions[bot]'

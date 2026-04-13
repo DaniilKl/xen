@@ -2,15 +2,28 @@ name: Build the last successful automatic rebase of aem-next branch
 
 on:
   workflow_dispatch:
-  create:
-    branches:
-      - 'aem-next-test-rebased'
+  workflow_run:
+    workflows:
+      - 'Rebase on top of QubesOS main and build RPMs'
+    types:
+      - completed
 
 jobs:
   qubes-dom0-package:
-    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
-    with:
-      qubes-component: 'vmm-xen'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout TrenchBoot/xen
+        uses: actions/checkout@v6
+        with:
+          repository: trenchboot/xen
+          ref: aem-next-test-rebased
+          path: xen
+      - name: Build xen
+        working-directory: xen
+        uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
+        with:
+          qubes-component: 'vmm-xen'
+          qubes-pkg-src-dir: '.'
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

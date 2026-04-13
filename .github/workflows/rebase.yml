@@ -20,7 +20,7 @@ jobs:
       - name: Checkout downstream xen repository
         uses: actions/checkout@v6
         with:
-          repository: trenchboot/xen
+          repository: DaniilKl/xen
           token: ${{ secrets.TOKEN }}
           path: xen
 
@@ -62,13 +62,13 @@ jobs:
       # For creation/deletion/pushing to branches and creating PRs
       contents: write
     with:
-      downstream-repo: 'https://github.com/trenchboot/xen.git'
+      downstream-repo: 'https://github.com/DaniilKl/xen.git'
       downstream-branch: 'aem-next'
-      upstream-repo: 'https://github.com/trenchboot/xen.git'
+      upstream-repo: 'https://github.com/DaniilKl/xen.git'
       upstream-branch: 'qubes-vmm-xen-with-patches'
       commit-user-name: 'github-actions[bot]'
       commit-user-email: 'github-actions[bot]@users.noreply.github.com'
-      cicd-trigger-resume: '7. Rerun the workflow https://github.com/TrenchBoot/qubes-antievilmaid/actions/runs/${{ github.run_id }} to resume automated rebase.'
+      cicd-trigger-resume: '7. Rerun the workflow https://github.com/DaniilKl/qubes-antievilmaid/actions/runs/${{ github.run_id }} to resume automated rebase.'
   cleanup-on-rebase-failure:
     needs: try-rebase
     runs-on: ubuntu-latest
@@ -86,5 +86,5 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: |
-          git push "https://x-access-token:${TOKEN}@github.com/trenchboot/xen.git" \
+          git push "https://x-access-token:${TOKEN}@github.com/DaniilKl/xen.git" \
             --delete qubes-vmm-xen-with-patches

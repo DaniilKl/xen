@@ -1,6 +1,7 @@
 name: Build the last successful automatic rebase of aem-next branch
 
 on:
+  workflow_dispatch:
   create:
     branches:
       - 'aem-next-test-rebased'

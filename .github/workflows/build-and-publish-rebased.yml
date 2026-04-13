@@ -18,12 +18,10 @@ jobs:
           repository: trenchboot/xen
           ref: aem-next-test-rebased
           path: xen
-      - name: Build xen
-        working-directory: xen
-        uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
+      - uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
         with:
           qubes-component: 'vmm-xen'
-          qubes-pkg-src-dir: '.'
+          qubes-pkg-src-dir: './xen'
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

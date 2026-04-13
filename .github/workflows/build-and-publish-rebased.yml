@@ -10,19 +10,10 @@ on:
 
 jobs:
   qubes-dom0-package:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    steps:
-      - name: Checkout TrenchBoot/xen
-        uses: actions/checkout@v6
-        with:
-          repository: trenchboot/xen
-          ref: aem-next-test-rebased
-          path: xen
-      - uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
-        with:
-          qubes-component: 'vmm-xen'
-          qubes-pkg-src-dir: './xen'
+    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@add-rebase-script
+    with:
+      qubes-component: 'vmm-xen'
+      qubes-component-branch: 'aem-next-test-rebased'
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

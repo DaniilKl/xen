@@ -65,7 +65,7 @@ jobs:
       downstream-repo: 'https://github.com/DaniilKl/xen.git'
       downstream-branch: 'aem-next'
       upstream-repo: 'https://github.com/DaniilKl/xen.git'
-      upstream-branch: 'qubes-vmm-xen-with-patches'
+      upstream-branch: 'qubes-vmm-xen-with-patches-rebase-prep'
       commit-user-name: 'github-actions[bot]'
       commit-user-email: 'github-actions[bot]@users.noreply.github.com'
       cicd-trigger-resume: '7. Rerun the workflow https://github.com/DaniilKl/qubes-antievilmaid/actions/runs/${{ github.run_id }} to resume automated rebase.'

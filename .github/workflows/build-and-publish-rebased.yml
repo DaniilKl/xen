@@ -16,6 +16,7 @@ jobs:
       qubes-component: 'vmm-xen'
       qubes-component-branch: 'aem-next-test-rebased'
       qubes-pkg-src-dir: '.'
+      qubes-pkg-version: '4.19.4'
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

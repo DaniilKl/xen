@@ -13,10 +13,10 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@add-rebase-script
     with:
-      qubes-component: 'xen'
+      qubes-component: 'vmm-xen'
       qubes-component-branch: 'aem-next-test-rebased'
       qubes-pkg-src-dir: '.'
-      qubes-pkg-version: '4.19.4'
+      qubes-component-spec-in: 'xen.spec.in'
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

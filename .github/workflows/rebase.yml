@@ -84,7 +84,7 @@ jobs:
       commit-user-name: 'github-actions[bot]'
       commit-user-email: 'github-actions[bot]@users.noreply.github.com'
       cicd-trigger-resume: '7. Rerun the workflow https://github.com/DaniilKl/qubes-antievilmaid/actions/runs/${{ github.run_id }} to resume automated rebase.'
-  cleanup-on-rebase-failure:
+  cleanup-after-rebase-attempt:
     needs: try-rebase
     runs-on: ubuntu-latest
     permissions:
@@ -101,5 +101,5 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: |
-          git push "https://x-access-token:${TOKEN}@github.com/DaniilKl/xen.git" \
+          git push "https://${TOKEN}@github.com/DaniilKl/xen.git" \
             --delete qubes-vmm-xen-with-patches

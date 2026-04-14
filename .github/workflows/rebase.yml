@@ -49,8 +49,22 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout -b qubes-vmm-xen-with-patches-rebase-prep "$UPSTREAM_TAG"
-          git am ../qubes-vmm-xen/*.patch
-
+          SPEC="../qubes-vmm-xen/xen.spec.in"
+          mapfile -t PATCHES < <(grep -E '^Patch[0-9]+:' "$SPEC" | awk '{print $2}')
+          for patch_file in "${PATCHES[@]}"; do
+            git am "../qubes-vmm-xen/${patch_file}"
+            escaped=$(printf '%s' "$patch_file" | sed 's/\./\\./g')
+            sed -i "/^Patch[0-9]*:[[:space:]]*${escaped}[[:space:]]*$/d" "$SPEC"
+            rm -f "../qubes-vmm-xen/${patch_file}"
+          done
+      - name: Copy QubesOS RPM files to downstream repository
+        run: |
+          mv qubes-vmm-xen/config qubes-vmm-xen/config-qubesos
+          sed -i 's/^Source3:[[:space:]]*config$/Source3: config-qubesos/' qubes-vmm-xen/xen.spec.in
+          cp -r qubes-vmm-xen/* xen/
+          cd xen
+          git add -A
+          git commit -m "QubesOS RPM files"
       - name: Push qubes-vmm-xen-with-patches branch to downstream
         working-directory: xen
         run: git push origin qubes-vmm-xen-with-patches-rebase-prep

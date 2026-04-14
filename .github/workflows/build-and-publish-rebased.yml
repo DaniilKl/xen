@@ -12,7 +12,7 @@ jobs:
   qubes-dom0-package:
     uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@add-rebase-script
     with:
-      qubes-component: 'vmm-xen'
+      qubes-component: 'xen'
       qubes-component-branch: 'aem-next-test-rebased'
       qubes-pkg-src-dir: '.'
       qubes-pkg-version: '4.19.4'

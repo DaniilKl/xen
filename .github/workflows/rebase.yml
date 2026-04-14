@@ -102,4 +102,4 @@ jobs:
           TOKEN: ${{ secrets.TOKEN }}
         run: |
           git push "https://${TOKEN}@github.com/DaniilKl/xen.git" \
-            --delete qubes-vmm-xen-with-patches
+            --delete qubes-vmm-xen-with-patches-rebase-prep

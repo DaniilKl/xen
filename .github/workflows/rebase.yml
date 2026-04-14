@@ -62,6 +62,7 @@ jobs:
           mv qubes-vmm-xen/config qubes-vmm-xen/config-qubesos
           sed -i 's/^Source3:[[:space:]]*config$/Source3: config-qubesos/' qubes-vmm-xen/xen.spec.in
           cp -r qubes-vmm-xen/* xen/
+          mv xen/xen.spec.in xen/vmm-xen.spec.in
           cd xen
           git add -A
           git commit -m "QubesOS RPM files"

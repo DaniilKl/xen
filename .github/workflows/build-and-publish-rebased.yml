@@ -10,6 +10,8 @@ jobs:
       version: ${{ steps.read-version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: 'aem-next-rebased'
       - name: Read version of the QubesOS Component from version file
         id: read-version
         run: echo "version=$(cat version)" >> $GITHUB_OUTPUT

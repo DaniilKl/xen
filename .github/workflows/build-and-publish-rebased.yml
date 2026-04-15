@@ -2,21 +2,25 @@ name: Build the last successful automatic rebase of aem-next branch
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - 'Rebase on top of QubesOS main and build RPMs'
-    types:
-      - completed
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Read version of the QubesOS Component from version file
+        id: read-version
+        run: echo "version=$(cat version)" >> $GITHUB_OUTPUT
   qubes-dom0-package:
-    if: github.event.workflow_run.conclusion == 'success'
-    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@add-rebase-script
+    needs: get-version
+    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
     with:
       qubes-component: 'vmm-xen'
-      qubes-component-branch: 'aem-next-test-rebased'
+      qubes-component-branch: 'aem-next-rebased'
       qubes-pkg-src-dir: '.'
-      qubes-pkg-version: '4.19.4'
+      qubes-pkg-version: ${{ needs.get-version.outputs.version }}
   trigger-woodpecker-cicd:
     needs: qubes-dom0-package
     uses: TrenchBoot/.github/.github/workflows/trigger-woodpecker-pipeline.yml@add-rebase-script

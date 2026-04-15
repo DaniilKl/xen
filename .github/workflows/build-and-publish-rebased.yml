@@ -15,7 +15,7 @@ jobs:
         run: echo "version=$(cat version)" >> $GITHUB_OUTPUT
   qubes-dom0-package:
     needs: get-version
-    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@master
+    uses: TrenchBoot/.github/.github/workflows/qubes-dom0-packagev2.yml@add-rebase-script
     with:
       qubes-component: 'vmm-xen'
       qubes-component-branch: 'aem-next-rebased'
